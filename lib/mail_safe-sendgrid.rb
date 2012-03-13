@@ -4,13 +4,20 @@ module MailSafe
     class << self
 
       @@replaced_addresses = {}
-      def add_body_postscript_with_mail_header(part, replaced_addresses, call_super = false)
-        @@replaced_addresses.merge! replaced_addresses
-        puts @@replaced_addresses
-        add_body_postscript_without_mail_header(part, @@replaced_addresses) if call_super
+      @@address_types = ADDRESS_TYPES.dup
 
+      def add_body_postscript_with_mail_header(part, replaced_addresses, call_super = false)
+        # we don't want to call add_body_postscript until after we've added the SendGrid SMTPAPI
+        # replaced addresses to the list of all addresses replaced by Mail Safe
+        @@replaced_addresses.reverse_merge! replaced_addresses
+        if call_super or replaced_addresses[:X_SMTPAPI]
+          add_xsmtpapi_to_address_types
+          add_body_postscript_without_mail_header(part, @@replaced_addresses)
+          remove_xsmtpapi_from_address_types
+        end
       end
       alias_method_chain :add_body_postscript, :mail_header
+
 
       def replace_external_addresses_with_mail_header(mail)
         replace_external_addresses_without_mail_header(mail)
@@ -38,11 +45,37 @@ module MailSafe
         # save the headers back to X-SMTPAPI
         mail.header['X-SMTPAPI'].value = x_smtpapi.to_json.gsub(/(["\]}])([,:])(["\[{])/, '\\1\\2 \\3')
 
-        add_body_postscript(mail,{'X_SMTPAPI'=>deleted_addresses}, true)
-
+        add_body_postscript(mail,{:X_SMTPAPI=>deleted_addresses}, true)
+        # we need to override add_text_postscript to include sendgrid x-smtpapi and not ADDRESS_TYPES only
 
       end
       alias_method_chain :replace_external_addresses, :mail_header
+
+      # ADDRESS_TYPES is frozen but we want to add :X_SMTPAPI to it
+      # so the original add_[text|html]_postscript functions have
+      # the SendGrid specific addresses that MailSafe removed as well
+      # when generating their message. Otherwise we would have to
+      # override these functions entirely.
+      def add_xsmtpapi_to_address_types
+        modified_address_types = @@address_types.dup
+        modified_address_types << :X_SMTPAPI
+        # silence already initialized constant ADDRESS_TYPES
+        silence_warnings do
+          MailSafe::AddressReplacer.singleton_class.const_set(:ADDRESS_TYPES,modified_address_types.uniq)
+        end
+      end
+
+      # We then need to reset ADDRESS_TYPES back to the frozen value
+      # for MailSafe to be able to process the next message properly
+      def remove_xsmtpapi_from_address_types
+
+        # silence already initialized constant ADDRESS_TYPES
+        silence_warnings do
+          MailSafe::AddressReplacer.singleton_class.const_set(:ADDRESS_TYPES,@@address_types)
+          end
+      end
     end
+
+
   end
 end
