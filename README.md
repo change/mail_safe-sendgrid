@@ -1,3 +1,5 @@
+[![Build Status](https://secure.travis-ci.org/change/mail_safe-sendgrid.png)](http://travis-ci.org/change/mail_safe-sendgrid)
+
 # MailSafe Sendgrid
 
 **MailSafe Sendgrid** adds Sendgrid support to Mail Safe by extending MailSafe::AddressReplacer to check for addresses included in the Sendgrid X-SMTPAPI headers. It automatically removes any offending (i.e., non-internal) addresses and removes the corresponding entries from any Sendgrid substitutions. The addresses that are removed are also passed to Mail Safe's postscript message (along with any :to, :cc, and :bcc addresses that were removed by Mail Safe itself).
