@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'mail_safe-sendgrid'
-  s.version     = '0.0.2'
+  s.version     = '0.0.3'
   s.date        = '2012-03-13'
   s.summary     = 'Sendgrid support for Mail Safe'
   s.description = 'Extends Mail Safe to look for and sanitize Sendgrid specific X-SMTPAPI headers'
